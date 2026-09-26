@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "ios-design": {
+      "source": "uizze.sh",
+      "sourceUrl": "https://uizze.sh/",
+      "sourceType": "well-known",
+      "computedHash": "0a52024d5bfa0e85e3249e6818e9bf781c87ca5037299027dcf8ad043e190595",
+      "wellKnownDigest": "sha256:b1412b4991600f13ff2aec03ae187cc8ead48090d0105acfef3a6982b05ef92d"
+    },
+    "ui-taste": {
+      "source": "uizze.sh",
+      "sourceUrl": "https://uizze.sh/",
+      "sourceType": "well-known",
+      "computedHash": "87972c875fb653a98e50308e873c90697dc2d481d82ac0ee6dc50980bdd9b559",
+      "wellKnownDigest": "sha256:398c2f01b44a792828962a3ea473ddc08a7152f15ad489b2617cad31c9a24baa"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "eb75bf6085080d7d31fa2c0f9fd98d49abd229356147999b09177b733276f806"
+    }
+  }
+}

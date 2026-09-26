@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: elora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: elora
+      POSTGRES_USER: elora
+      POSTGRES_PASSWORD: ${ELORA_LOCAL_DB_PASSWORD:-elora_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - elora_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elora -d elora"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/elora
+      DB_USERNAME: elora
+      DB_PASSWORD: ${ELORA_LOCAL_DB_PASSWORD:-elora_dev}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  elora_postgres_data:

@@ -1,0 +1,75 @@
+package com.elora.marketplace.controller;
+
+import com.elora.marketplace.dto.MarketplaceDTOs.ReviewRequest;
+import com.elora.marketplace.dto.MarketplaceDTOs.ReviewView;
+import com.elora.marketplace.dto.MarketplaceDTOs.ReviewSummary;
+import com.elora.marketplace.model.AppUser;
+import com.elora.marketplace.model.Review;
+import com.elora.marketplace.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+
+@RestController @RequestMapping("/api/reviews") @RequiredArgsConstructor
+public class ReviewController {
+    private final ReviewRepository reviews;
+    private final OrderRepository orders;
+    private final ServiceOrderRepository serviceOrders;
+    private final ProductRepository products;
+    private final UserRepository users;
+
+    private AppUser currentUser() { return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
+
+    @GetMapping("/user/{userId}")
+    public List<ReviewView> list(@PathVariable Long userId) {
+        return reviews.findByReviewedUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(r -> new ReviewView(r.getId(), r.getReviewer().getId(), r.getReviewer().getName(), r.getRating(), r.getComment(), r.getCreatedAt())).toList();
+    }
+
+    @GetMapping("/user/{userId}/summary")
+    public ReviewSummary summary(@PathVariable Long userId) {
+        Map<Integer, Long> distribution = new LinkedHashMap<>();
+        for (int stars = 5; stars >= 1; stars--) distribution.put(stars, 0L);
+        reviews.distributionForUser(userId).forEach(row -> distribution.put((Integer) row[0], (Long) row[1]));
+        return new ReviewSummary(reviews.averageForUser(userId), reviews.countForUser(userId), distribution);
+    }
+
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody ReviewRequest request) {
+        AppUser reviewer = currentUser();
+        if (request.rating() == null || request.rating() < 1 || request.rating() > 5 || request.comment() == null || request.comment().isBlank())
+            return ResponseEntity.badRequest().body(Map.of("message", "Informe uma nota de 1 a 5 e um comentário."));
+        var target = users.findById(request.reviewedUserId());
+        if (target.isEmpty()) return ResponseEntity.notFound().build();
+        if (reviewer.getId().equals(target.get().getId())) return ResponseEntity.badRequest().body(Map.of("message", "Você não pode avaliar a si mesmo."));
+
+        Review review = new Review();
+        review.setReviewer(reviewer); review.setReviewedUser(target.get());
+        review.setRating(request.rating()); review.setComment(request.comment().trim().substring(0, Math.min(2000, request.comment().trim().length())));
+        if ("PRODUCT".equalsIgnoreCase(request.type())) {
+            var order = orders.findById(request.orderId());
+            if (order.isEmpty() || !order.get().getBuyer().getId().equals(reviewer.getId()) || !"CONCLUIDO".equals(order.get().getStatus()))
+                return ResponseEntity.status(403).body(Map.of("message", "A avaliação fica disponível depois da conclusão do pedido."));
+            boolean sellerMatches = order.get().getItems().stream().anyMatch(i -> i.getProduct().getOwner().getId().equals(target.get().getId()));
+            if (!sellerMatches) return ResponseEntity.badRequest().body(Map.of("message", "Este vendedor não participou do pedido."));
+            if (reviews.existsByReviewerIdAndProductOrderIdAndReviewedUserId(reviewer.getId(), order.get().getId(), target.get().getId()))
+                return ResponseEntity.badRequest().body(Map.of("message", "Você já avaliou este vendedor neste pedido."));
+            review.setProductOrder(order.get());
+        } else if ("SERVICE".equalsIgnoreCase(request.type())) {
+            var serviceOrder = serviceOrders.findById(request.serviceOrderId());
+            if (serviceOrder.isEmpty() || !serviceOrder.get().getClient().getId().equals(reviewer.getId())
+                    || !serviceOrder.get().getProvider().getId().equals(target.get().getId())
+                    || !"CONCLUIDO".equals(serviceOrder.get().getStatus()))
+                return ResponseEntity.status(403).body(Map.of("message", "Só é possível avaliar um serviço concluído por você."));
+            if (reviews.existsByReviewerIdAndServiceOrderId(reviewer.getId(), serviceOrder.get().getId()))
+                return ResponseEntity.badRequest().body(Map.of("message", "Você já avaliou este serviço."));
+            review.setServiceOrder(serviceOrder.get());
+        } else return ResponseEntity.badRequest().body(Map.of("message", "Tipo de avaliação inválido."));
+        Review saved = reviews.save(review);
+        return ResponseEntity.status(201).body(new ReviewView(saved.getId(), reviewer.getId(), reviewer.getName(), saved.getRating(), saved.getComment(), saved.getCreatedAt()));
+    }
+}
