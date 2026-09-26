@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         loadRelatedProducts(detailProduct);
         message.hidden = true; detail.hidden = false; syncFavoriteButtons();
-    } catch (error) { message.textContent = error.message || 'Não foi possível carregar este anúncio.'; message.classList.add('is-error'); }
+    } catch { message.textContent = 'Não foi possível carregar este anúncio agora. Volte ao catálogo e tente novamente.'; message.classList.add('is-error'); }
 });
 
 async function addProductToCart(buyNow) {

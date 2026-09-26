@@ -36,7 +36,8 @@ function renderNav() {
             <div class="nav-account-menu">
                 <a href="perfil.html">Meu perfil</a><a href="dashboard.html">Painel</a>
                 <a href="meus-produtos.html">Meus anúncios</a><a href="meus-pedidos.html">Meus pedidos</a><a href="minhas-vendas.html">Vendas</a>
-                <a href="servicos-contratados.html">Serviços contratados</a><a href="favoritos.html">Favoritos</a><a href="mensagens.html">Mensagens</a>
+                <a href="oferecer-servico.html">Publicar serviço</a><a href="servicos-contratados.html">Solicitações de serviço</a>
+                <a href="meus-projetos.html">Meus projetos</a><a href="propostas.html">Minhas propostas</a><a href="favoritos.html">Favoritos</a><a href="mensagens.html">Mensagens</a>
                 <button id="nav-logout" type="button">Sair da conta</button>
             </div>
         </details>` : `<a href="login.html">Entrar</a><a href="cadastro.html" class="btn nav-signup">Criar conta</a>`;
@@ -44,11 +45,23 @@ function renderNav() {
     nav.innerHTML = `
         <a href="produtos.html">Produtos</a>
         <a href="servicos.html">Serviços</a>
+        <a href="projetos.html">Projetos</a>
         ${authenticated ? `<a href="vender.html">Anunciar</a><a href="mensagens.html">Mensagens</a>` : ''}
         <a class="nav-favorites-link" href="favoritos.html">Favoritos</a>
         ${account}
         ${typeof cartControl === 'function' ? cartControl() : ''}
     `;
+
+    const currentFile = location.pathname.split('/').pop() || 'index.html';
+    const activePage = currentFile === 'editar-produto.html' ? 'vender.html'
+        : currentFile === 'oferecer-servico.html' ? 'servicos.html'
+        : currentFile;
+    nav.querySelectorAll('a[href]').forEach(link => {
+        if (link.getAttribute('href') === activePage) {
+            link.classList.add('is-current');
+            link.setAttribute('aria-current', 'page');
+        }
+    });
 
     document.getElementById('nav-logout')?.addEventListener('click', () => {
         localStorage.removeItem('token');
@@ -60,6 +73,14 @@ function renderNav() {
         header?.classList.remove('nav-open');
         document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');
     }));
+
+    const accountMenu = nav.querySelector('.nav-account');
+    document.addEventListener('click', event => {
+        if (accountMenu?.open && !accountMenu.contains(event.target)) accountMenu.open = false;
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && accountMenu?.open) accountMenu.open = false;
+    });
 }
 
 function cartControl() {

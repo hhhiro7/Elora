@@ -3,6 +3,7 @@ package com.elora.marketplace.controller;
 import com.elora.marketplace.dto.MarketplaceDTOs.ReviewRequest;
 import com.elora.marketplace.dto.MarketplaceDTOs.ReviewView;
 import com.elora.marketplace.dto.MarketplaceDTOs.ReviewSummary;
+import com.elora.marketplace.dto.MarketplaceDTOs.ServiceReviewView;
 import com.elora.marketplace.model.AppUser;
 import com.elora.marketplace.model.Review;
 import com.elora.marketplace.repository.*;
@@ -28,6 +29,13 @@ public class ReviewController {
     public List<ReviewView> list(@PathVariable Long userId) {
         return reviews.findByReviewedUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(r -> new ReviewView(r.getId(), r.getReviewer().getId(), r.getReviewer().getName(), r.getRating(), r.getComment(), r.getCreatedAt())).toList();
+    }
+
+    @GetMapping("/user/{userId}/services")
+    public List<ServiceReviewView> serviceReviews(@PathVariable Long userId) {
+        return reviews.findByReviewedUserIdAndServiceOrderIsNotNullOrderByCreatedAtDesc(userId).stream()
+                .map(r -> new ServiceReviewView(r.getId(), r.getReviewer().getId(), r.getReviewer().getName(),
+                        r.getRating(), r.getComment(), r.getServiceOrder().getService().getTitle(), r.getCreatedAt())).toList();
     }
 
     @GetMapping("/user/{userId}/summary")

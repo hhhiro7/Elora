@@ -6,6 +6,7 @@ import com.elora.marketplace.model.AppUser;
 import com.elora.marketplace.model.ServiceOrder;
 import com.elora.marketplace.repository.ServiceOrderRepository;
 import com.elora.marketplace.repository.ServiceRepository;
+import com.elora.marketplace.model.ServicePackage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,9 +36,17 @@ public class ServiceOrderController {
         if (service == null) return ResponseEntity.notFound().build();
         AppUser client = currentUser();
         if (service.getOwner().getId().equals(client.getId())) return ResponseEntity.badRequest().body(Map.of("message", "Você não pode contratar seu próprio serviço."));
+        ServicePackage selectedPackage = null;
+        if (request.packageId() != null) {
+            selectedPackage = service.getPackages().stream().filter(p -> p.getId().equals(request.packageId())).findFirst().orElse(null);
+            if (selectedPackage == null) return ResponseEntity.badRequest().body(Map.of("message", "O pacote escolhido não pertence a este serviço."));
+        }
         ServiceOrder order = new ServiceOrder();
         order.setClient(client); order.setProvider(service.getOwner()); order.setService(service);
-        order.setAgreedPrice(service.getPrice());
+        order.setSelectedPackage(selectedPackage);
+        order.setAgreedPackageName(selectedPackage == null ? "Serviço" : selectedPackage.getName());
+        order.setDeliveryDays(selectedPackage == null ? service.getDeliveryDays() : selectedPackage.getDeliveryDays());
+        order.setAgreedPrice(selectedPackage == null ? service.getPrice() : selectedPackage.getPrice());
         String description = request.description().trim();
         order.setRequestDescription(description.substring(0, Math.min(description.length(), 2000)));
         return ResponseEntity.status(201).body(orders.save(order));

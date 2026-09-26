@@ -9,8 +9,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.List;
-import com.elora.marketplace.model.Product;
-import com.elora.marketplace.model.ServiceOffer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @RestController @RequestMapping("/api/users") @RequiredArgsConstructor
@@ -20,6 +18,7 @@ public class ProfileController {
     private final ServiceRepository services;
     private final ReviewRepository reviews;
     private final OrderItemRepository orderItems;
+    private final ServiceOrderRepository serviceOrders;
     private final PasswordEncoder passwordEncoder;
 
     private AppUser currentUser() {
@@ -66,15 +65,41 @@ public class ProfileController {
         return users.findById(id).<ResponseEntity<?>>map(user -> ResponseEntity.ok(new PublicProfile(
                 user.getId(), user.getName(), user.getCity(), user.getBio(), user.getAvatarUrl(), user.getCreatedAt(),
                 products.countByOwnerIdAndStatus(id, "ATIVO"), services.countByOwnerIdAndStatus(id, "ATIVO"),
-                reviews.averageForUser(id), reviews.countForUser(id), orderItems.countCompletedSalesByOwner(id))))
+                reviews.averageForUser(id), reviews.countForUser(id), orderItems.countCompletedSalesByOwner(id),
+                serviceOrders.countByProviderIdAndStatus(id, "CONCLUIDO"), profileLevel(serviceOrders.countByProviderIdAndStatus(id, "CONCLUIDO"), reviews.countServiceReviewsForUser(id), reviews.averageServiceRatingForUser(id)),
+                reviews.averageServiceRatingForUser(id), reviews.countServiceReviewsForUser(id))))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    private String profileLevel(long completed, long reviewCount, Double average) {
+        if (reviewCount < 3 || average == null) return null;
+        if (completed >= 25 && average >= 4.8) return "Destaque";
+        if (completed >= 10 && average >= 4.5) return "Experiente";
+        if (completed >= 3 && average >= 4.0) return "Ativo";
+        return "Novo";
+    }
+
     @GetMapping("/{id}/products")
-    public List<Product> publicProducts(@PathVariable Long id) { return products.findByOwnerIdAndStatus(id, "ATIVO"); }
+    public List<PublicProductListing> publicProducts(@PathVariable Long id) {
+        return products.findByOwnerIdAndStatus(id, "ATIVO").stream()
+                .map(product -> new PublicProductListing(product.getId(), product.getName(), product.getCategory(),
+                        product.getPrice(), product.getImageUrl(), product.getLocation(), product.getConditionType()))
+                .toList();
+    }
 
     @GetMapping("/{id}/services")
-    public List<ServiceOffer> publicServices(@PathVariable Long id) { return services.findByOwnerIdAndStatus(id, "ATIVO"); }
+    public List<PublicServiceListing> publicServices(@PathVariable Long id) {
+        long completed = serviceOrders.countByProviderIdAndStatus(id, "CONCLUIDO");
+        long reviewCount = reviews.countServiceReviewsForUser(id);
+        Double rating = reviews.averageServiceRatingForUser(id);
+        String level = profileLevel(completed, reviewCount, rating);
+        return services.findByOwnerIdAndStatus(id, "ATIVO").stream()
+                .map(service -> new PublicServiceListing(service.getId(), service.getTitle(), service.getCategory(),
+                        service.getPrice(), service.getImageUrl(), service.getLocation(), service.getDeliveryDays(),
+                        service.getExperienceLevel(), service.getTags(), service.getPortfolioUrls(),
+                        rating, reviewCount, completed, level))
+                .toList();
+    }
 
     private String clean(String value, int maxLength) {
         if (value == null || value.isBlank()) return null;

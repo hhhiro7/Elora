@@ -50,7 +50,7 @@ public class OrderController {
         if (req.items() == null || req.items().isEmpty()) {
             return ResponseEntity.badRequest().body("O pedido precisa ter pelo menos um item.");
         }
-        if (req.paymentMethod() == null || !List.of("PIX", "CREDIT_CARD").contains(req.paymentMethod())) return ResponseEntity.badRequest().body("Forma de pagamento inválida.");
+        if (req.paymentMethod() == null || !List.of("PIX", "CREDIT_CARD", "DEBIT_CARD").contains(req.paymentMethod())) return ResponseEntity.badRequest().body("Forma de pagamento inválida.");
         if (req.deliveryAddress() != null && req.deliveryAddress().length() > 1000) return ResponseEntity.badRequest().body("O endereço é muito longo.");
 
         java.util.Map<Long, Integer> requested = new java.util.LinkedHashMap<>();

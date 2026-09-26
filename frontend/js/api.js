@@ -36,7 +36,9 @@ async function apiCall(endpoint, method = 'GET', body = null) {
         if (res.status === 404 && /^\s*<!doctype html|^\s*<html/i.test(text)) {
             throw new Error(`A solicitação foi enviada a ${API_URL}, que respondeu com uma página HTML em vez da API. Confira a URL do backend e o proxy do servidor.`);
         }
-        throw new Error(message);
+        const error = new Error(message);
+        error.status = res.status;
+        throw error;
     }
 
     if (!text) return {};
@@ -97,10 +99,15 @@ window.addEventListener('elora:auth-expired', () => {
     }
 });
 
-// Imagem simples usada quando o produto não tem imageUrl ou a URL não carrega.
+// Placeholder neutro para anúncios sem imagem, sem inventar uma foto do produto.
 const FALLBACK_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">' +
-    '<rect width="100%" height="100%" fill="#171923"/>' +
-    '<text x="50%" y="50%" font-family="Segoe UI, sans-serif" font-size="16" fill="#A1A1B5" text-anchor="middle" dy=".3em">Sem imagem</text>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440">' +
+    '<rect width="640" height="440" fill="#171a22"/>' +
+    '<path d="M0 310 155 190l105 88 103-130 277 231v61H0Z" fill="#20232e"/>' +
+    '<circle cx="463" cy="126" r="33" fill="#29263d"/>' +
+    '<rect x="257" y="157" width="126" height="126" rx="28" fill="#242333" stroke="#504878" stroke-width="3"/>' +
+    '<path d="M288 242l27-32 22 21 19-24 19 35h-87Z" fill="none" stroke="#b8aefa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="315" cy="192" r="7" fill="#b8aefa"/>' +
+    '<text x="320" y="335" font-family="sans-serif" font-size="17" fill="#b0b2c0" text-anchor="middle">Imagem não informada</text>' +
     '</svg>'
 );

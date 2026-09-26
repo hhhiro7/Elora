@@ -11,7 +11,7 @@ public class AppOrder {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne @JoinColumn(name = "buyer_id") private AppUser buyer;
     private BigDecimal totalAmount;
-    private String paymentMethod; // PIX, CREDIT_CARD
+    private String paymentMethod; // PIX, CREDIT_CARD, DEBIT_CARD (simulated)
     private String status = "PAGAMENTO_CONFIRMADO";
     @Column(length = 1000) private String deliveryAddress;
     private LocalDateTime createdAt = LocalDateTime.now();

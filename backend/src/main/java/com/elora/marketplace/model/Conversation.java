@@ -13,6 +13,7 @@ public class Conversation {
     @ManyToOne(optional = false) @JoinColumn(name = "participant_b_id", nullable = false) private AppUser participantB;
     @ManyToOne @JoinColumn(name = "product_id") private Product product;
     @ManyToOne @JoinColumn(name = "service_id") private ServiceOffer service;
+    @ManyToOne @JoinColumn(name = "project_id") private Project project;
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
 }

@@ -30,9 +30,12 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/*.html", "/css/**", "/js/**", "/assets/**", "/favicon.ico", "/error", "/api/auth/**", "/h2-console/**").permitAll()
                 // rotas "mine" precisam vir antes das regras genéricas de GET, senão ficariam públicas
                 .requestMatchers(HttpMethod.GET, "/api/products/mine", "/api/services/mine", "/api/orders/mine").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/projects/mine", "/api/proposals/mine").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/projects", "/api/projects/*").permitAll()
                 .requestMatchers("/api/users/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/users/*/products", "/api/users/*/services", "/api/users/*/reviews").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*", "/api/reviews/user/*", "/api/reviews/user/*/summary").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/user/*/services").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/services/**").permitAll()
                 .anyRequest().authenticated()

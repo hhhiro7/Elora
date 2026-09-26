@@ -15,11 +15,17 @@ public interface ServiceRepository extends JpaRepository<ServiceOffer, Long> {
     long countByOwnerIdAndStatus(Long ownerId, String status);
     List<ServiceOffer> findByOwnerIdAndStatus(Long ownerId, String status);
     @Query("select s from ServiceOffer s where s.status = 'ATIVO' " +
-           "and (:q = '' or lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''))) like lower(concat('%',:q,'%'))) " +
+           "and (:q = '' or lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''),' ',coalesce(s.owner.name,''))) like lower(concat('%',:q,'%'))) " +
            "and (:category = '' or lower(coalesce(s.category,'')) = lower(:category)) " +
            "and (:minPrice is null or s.price >= :minPrice) and (:maxPrice is null or s.price <= :maxPrice) " +
-           "and (:location = '' or lower(coalesce(s.location,'')) like lower(concat('%',:location,'%')))" )
+           "and (:location = '' or lower(coalesce(s.location,'')) like lower(concat('%',:location,'%'))) " +
+           "and (:maxDays is null or s.deliveryDays is null or s.deliveryDays <= :maxDays) " +
+           "and (:experience = '' or lower(coalesce(s.experienceLevel,'')) = lower(:experience)) " +
+           "and (:mode = '' or s.serviceMode = :mode or (s.serviceMode is null and :mode = 'ONLINE')) " +
+           "and (:minRating is null or coalesce((select avg(r.rating) from Review r where r.reviewedUser.id = s.owner.id and r.serviceOrder is not null), 0) >= :minRating)" )
     Page<ServiceOffer> searchActive(@Param("q") String q, @Param("category") String category,
             @Param("minPrice") BigDecimal minPrice, @Param("maxPrice") BigDecimal maxPrice,
-            @Param("location") String location, Pageable pageable);
+            @Param("location") String location, @Param("maxDays") Integer maxDays,
+            @Param("experience") String experience, @Param("mode") String mode,
+            @Param("minRating") Double minRating, Pageable pageable);
 }

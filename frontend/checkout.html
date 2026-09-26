@@ -1,3 +1,74 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0D0F15"><title>Finalizar compra — Elora</title><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/refinement.css"></head>
-<body><header><a href="index.html" class="logo">elora<span class="logo-mark" aria-hidden="true"></span></a><nav id="nav-menu" aria-label="Navegação principal"></nav></header><main class="container account-page checkout-page"><a href="carrinho.html" class="detail-back">← Voltar à sacola</a><div class="page-intro"><div><p class="catalog-eyebrow">Etapa final</p><h1>Finalizar compra</h1><p>Revise o pedido. Nenhuma cobrança real será feita.</p></div></div><div id="checkout-message" class="alert" role="status" aria-live="polite"></div><div class="checkout-layout"><form id="checkout-form" class="card checkout-form"><h2>Entrega</h2><div class="form-group"><label for="delivery-address">Endereço de entrega</label><textarea id="delivery-address" required maxlength="1000" rows="3" placeholder="Rua, número, bairro, cidade e CEP"></textarea></div><h2>Pagamento simulado</h2><fieldset class="payment-options"><legend>Escolha uma forma</legend><label><input type="radio" name="payment" value="PIX" checked><span><strong>PIX</strong><small>Confirmação simulada</small></span></label><label><input type="radio" name="payment" value="CREDIT_CARD"><span><strong>Cartão</strong><small>Sem cobrança real</small></span></label></fieldset><button id="place-order" class="btn" type="submit">Confirmar pedido</button><p class="muted-copy">Este projeto não processa pagamentos reais.</p></form><aside class="card checkout-summary"><h2>Seu pedido</h2><div id="checkout-items"></div><div id="checkout-total" class="checkout-total"></div></aside></div></main>
-<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/nav.js"></script><script src="js/cart.js"></script><script src="js/checkout.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0D0F15">
+  <title>Finalizar compra — Elora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/refinement.css">
+</head>
+<body>
+  <header><a href="index.html" class="logo">elora<span class="logo-mark" aria-hidden="true"></span></a><nav id="nav-menu" aria-label="Navegação principal"></nav></header>
+  <main class="container account-page checkout-page">
+    <a href="carrinho.html" class="detail-back"><span aria-hidden="true">←</span> Voltar à sacola</a>
+    <div class="checkout-heading"><div><h1>Finalizar compra</h1><p>Confira seus dados e escolha como receber o pedido.</p></div><span class="checkout-secure-note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8V5.7a4.5 4.5 0 0 1 9 0V8m-10 0h11v9h-11z"/></svg> Pedido protegido pela sua conta</span></div>
+    <ol class="checkout-steps" aria-label="Etapas para finalizar a compra"><li class="is-current"><span>1</span> Seus dados</li><li><span>2</span> Entrega</li><li><span>3</span> Pagamento</li><li><span>4</span> Revisão</li></ol>
+    <div id="checkout-message" class="alert" role="status" aria-live="polite"></div>
+    <div class="checkout-layout">
+      <form id="checkout-form" class="checkout-form">
+        <section class="card checkout-section" aria-labelledby="checkout-customer-heading">
+          <div class="checkout-section-heading"><span class="checkout-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.4 3.1-5 7-5s6.3 1.6 7 5"/></svg></span><div><h2 id="checkout-customer-heading">Seus dados</h2><p>Confira nome e contatos para esta demonstração. O pedido ficará vinculado à conta conectada.</p></div></div>
+          <div class="checkout-fields checkout-fields-two">
+            <div class="form-group"><label for="buyer-name">Nome completo</label><input id="buyer-name" name="buyerName" autocomplete="name" maxlength="120" required></div>
+            <div class="form-group"><label for="buyer-email">E-mail</label><input id="buyer-email" name="buyerEmail" type="email" autocomplete="email" maxlength="160" required></div>
+            <div class="form-group"><label for="buyer-phone">Celular</label><input id="buyer-phone" name="buyerPhone" type="tel" autocomplete="tel" inputmode="tel" maxlength="32" required></div>
+          </div>
+          <p id="checkout-profile-status" class="checkout-inline-note" aria-live="polite">Buscando os dados da sua conta…</p>
+        </section>
+
+        <section class="card checkout-section" aria-labelledby="checkout-address-heading">
+          <div class="checkout-section-heading"><span class="checkout-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></svg></span><div><h2 id="checkout-address-heading">Endereço de entrega</h2><p>Preencha onde você quer receber este pedido.</p></div></div>
+          <div class="checkout-fields checkout-fields-address">
+            <div class="form-group checkout-field-wide"><label for="address-street">Rua ou avenida</label><input id="address-street" autocomplete="address-line1" maxlength="160" required></div>
+            <div class="form-group"><label for="address-number">Número</label><input id="address-number" autocomplete="address-line2" maxlength="20" required></div>
+            <div class="form-group"><label for="address-complement">Complemento <span>(opcional)</span></label><input id="address-complement" maxlength="100" placeholder="Apto, bloco…"></div>
+            <div class="form-group"><label for="address-district">Bairro</label><input id="address-district" maxlength="100" required></div>
+            <div class="form-group"><label for="address-zip">CEP</label><input id="address-zip" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000" required></div>
+            <div class="form-group"><label for="address-city">Cidade</label><input id="address-city" autocomplete="address-level2" maxlength="120" required></div>
+            <div class="form-group"><label for="address-state">Estado</label><input id="address-state" autocomplete="address-level1" maxlength="60" required></div>
+          </div>
+        </section>
+
+        <section class="card checkout-section" aria-labelledby="checkout-delivery-heading">
+          <div class="checkout-section-heading"><span class="checkout-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="1.8"/><circle cx="18" cy="19" r="1.8"/></svg></span><div><h2 id="checkout-delivery-heading">Forma de entrega</h2><p>Prazo e frete são estimativas demonstrativas.</p></div></div>
+          <fieldset class="checkout-choice-list"><legend class="sr-only">Escolha o prazo de entrega</legend>
+            <label class="checkout-choice"><input type="radio" name="delivery" value="STANDARD" checked><span class="checkout-choice-radio" aria-hidden="true"></span><span class="checkout-choice-copy"><strong>Econômica</strong><small id="standard-estimate">Previsão: calculando…</small></span><span class="checkout-choice-price">Grátis</span></label>
+            <label class="checkout-choice"><input type="radio" name="delivery" value="EXPRESS"><span class="checkout-choice-radio" aria-hidden="true"></span><span class="checkout-choice-copy"><strong>Rápida</strong><small id="express-estimate">Previsão: calculando…</small></span><span class="checkout-choice-price">Grátis na simulação</span></label>
+          </fieldset>
+          <p class="checkout-inline-note">Nenhum frete ou pagamento real será cobrado nesta demonstração.</p>
+        </section>
+
+        <section class="card checkout-section" aria-labelledby="checkout-payment-heading">
+          <div class="checkout-section-heading"><span class="checkout-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-14 5h4"/></svg></span><div><h2 id="checkout-payment-heading">Pagamento demonstrativo</h2><p>Escolha uma forma para registrar no pedido.</p></div></div>
+          <fieldset class="checkout-choice-list checkout-payment-list"><legend class="sr-only">Escolha a forma de pagamento</legend>
+            <label class="checkout-choice"><input type="radio" name="payment" value="PIX" checked><span class="checkout-choice-radio" aria-hidden="true"></span><span class="checkout-choice-copy"><strong>Pix</strong><small>Confirmação simulada</small></span><span class="checkout-payment-mark">PIX</span></label>
+            <label class="checkout-choice"><input type="radio" name="payment" value="CREDIT_CARD"><span class="checkout-choice-radio" aria-hidden="true"></span><span class="checkout-choice-copy"><strong>Cartão de crédito</strong><small>Sem informar dados do cartão</small></span><span class="checkout-payment-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></span></label>
+            <label class="checkout-choice"><input type="radio" name="payment" value="DEBIT_CARD"><span class="checkout-choice-radio" aria-hidden="true"></span><span class="checkout-choice-copy"><strong>Cartão de débito</strong><small>Sem informar dados do cartão</small></span><span class="checkout-payment-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></span></label>
+          </fieldset>
+          <p class="checkout-demo-disclaimer">Demonstração segura: não digite nem envie número, validade ou código de segurança de cartão. Nenhuma transação financeira acontece.</p>
+        </section>
+
+        <button id="place-order" class="btn checkout-submit" type="submit">Confirmar pedido <span aria-hidden="true">→</span></button>
+        <p class="checkout-final-note">Ao confirmar, seu pedido será associado à sua conta. Os preços e a disponibilidade são validados novamente no servidor.</p>
+      </form>
+
+      <aside class="card checkout-summary" aria-labelledby="checkout-summary-heading"><div class="checkout-summary-heading"><div><h2 id="checkout-summary-heading">Resumo do pedido</h2><p id="checkout-item-count">Carregando itens…</p></div><a href="carrinho.html">Editar</a></div><div id="checkout-items" class="checkout-items"></div><div id="checkout-total" class="checkout-totals"></div><p class="checkout-summary-trust"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8V5.7a4.5 4.5 0 0 1 9 0V8m-10 0h11v9h-11z"/></svg> Checkout demonstrativo. Sem cobrança real.</p></aside>
+    </div>
+  </main>
+  <script src="js/config.js"></script><script src="js/api.js"></script><script src="js/nav.js"></script><script src="js/cart.js"></script><script src="js/checkout.js"></script>
+</body>
+</html>

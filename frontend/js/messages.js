@@ -45,7 +45,8 @@ function formatConversationDate(value) {
 }
 
 function listingHref(summary) {
-    return summary.targetType === 'SERVICE' ? `servico.html?id=${summary.targetId}`
+    return summary.targetType === 'PROJECT' ? `projeto.html?id=${summary.targetId}`
+        : summary.targetType === 'SERVICE' ? `servico.html?id=${summary.targetId}`
         : summary.targetType === 'PRODUCT' ? `produto.html?id=${summary.targetId}`
             : `usuario.html?id=${summary.otherUserId}`;
 }
@@ -57,7 +58,7 @@ async function openConversation(id, summary) {
     document.getElementById('messages-layout').classList.add('has-active-conversation');
     const panel = document.getElementById('conversation-panel');
     const link = listingHref(summary);
-    const itemType = summary.targetType === 'SERVICE' ? 'Serviço anunciado' : summary.targetType === 'PRODUCT' ? 'Produto anunciado' : 'Perfil';
+    const itemType = summary.targetType === 'PROJECT' ? 'Projeto publicado' : summary.targetType === 'SERVICE' ? 'Serviço anunciado' : summary.targetType === 'PRODUCT' ? 'Produto anunciado' : 'Perfil';
     panel.innerHTML = `<div class="conversation-thread"><header class="conversation-thread-header"><button type="button" class="conversation-back" aria-label="Voltar à lista de conversas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>Conversas</span></button><span class="conversation-avatar conversation-header-avatar">${summary.otherUserAvatar ? `<img src="${escapeHtml(summary.otherUserAvatar)}" alt="">` : escapeHtml((summary.otherUserName || '?').charAt(0).toUpperCase())}</span><div class="conversation-header-copy"><h2>${escapeHtml(summary.otherUserName)}</h2><span>Conversa segura pela Elora</span></div><a class="conversation-profile-link" href="usuario.html?id=${summary.otherUserId}">Ver perfil</a></header><a class="conversation-listing-context" href="${link}">${summary.targetImageUrl ? `<img src="${escapeHtml(summary.targetImageUrl)}" alt="" loading="lazy">` : '<span class="conversation-listing-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path></svg></span>'}<span><small>${itemType}</small><strong>${escapeHtml(summary.targetTitle || 'Ver perfil')}</strong>${summary.targetPrice != null ? `<span class="conversation-listing-price">${formatCurrency(summary.targetPrice)}</span>` : ''}</span><svg class="context-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></a><div id="message-thread" class="message-thread" aria-live="polite" aria-relevant="additions text"><p class="empty-state">Carregando mensagens…</p></div><form id="message-form" class="message-composer"><label class="sr-only" for="message-content">Escreva uma mensagem</label><textarea id="message-content" rows="1" maxlength="4000" required placeholder="Escreva sua mensagem…"></textarea><button class="btn" type="submit" aria-label="Enviar mensagem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8Zm3 8h13"></path></svg></button><span class="composer-hint">Enter envia · Shift + Enter quebra a linha</span></form></div>`;
     panel.querySelector('.conversation-back').addEventListener('click', () => {
         document.getElementById('messages-layout').classList.remove('has-active-conversation');

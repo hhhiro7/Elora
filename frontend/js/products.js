@@ -40,7 +40,7 @@ async function loadProducts(reset) {
     const list = document.getElementById('product-list');
     const button = document.getElementById('load-more-products');
     const results = document.getElementById('product-results');
-    if (reset) { productPage = 0; list.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>'; }
+    if (reset) { productPage = 0; list.innerHTML = '<div class="skeleton-card" aria-hidden="true"><span></span><span></span><span></span></div><div class="skeleton-card" aria-hidden="true"><span></span><span></span><span></span></div><div class="skeleton-card" aria-hidden="true"><span></span><span></span><span></span></div><div class="skeleton-card" aria-hidden="true"><span></span><span></span><span></span></div>'; }
     button.disabled = true;
     const params = new URLSearchParams({ page: String(productPage), size: '24', sort: document.getElementById('product-sort').value });
     const values = {
@@ -60,7 +60,7 @@ async function loadProducts(reset) {
         results.textContent = `${page.totalElements} ${page.totalElements === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
         syncFavoriteButtons();
     } catch (error) {
-        if (reset) list.innerHTML = `<div class="empty-state card-empty"><h2>Não foi possível carregar os anúncios</h2><p>${escapeHtml(error.message || 'Verifique sua conexão e tente de novo.')}</p><button class="btn btn-secondary" type="button" onclick="loadProducts(true)">Tentar novamente</button></div>`;
+        if (reset) list.innerHTML = '<div class="empty-state card-empty"><h2>Não foi possível carregar os anúncios</h2><p>Confira sua conexão e tente novamente em instantes.</p><button class="btn btn-secondary" type="button" onclick="loadProducts(true)">Tentar novamente</button></div>';
         button.hidden = true; results.textContent = 'Catálogo indisponível';
     } finally { productLoading = false; }
 }

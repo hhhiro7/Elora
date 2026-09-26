@@ -13,6 +13,9 @@ public class ServiceOrder {
     @ManyToOne(optional = false) @JoinColumn(name = "client_id", nullable = false) private AppUser client;
     @ManyToOne(optional = false) @JoinColumn(name = "provider_id", nullable = false) private AppUser provider;
     @ManyToOne(optional = false) @JoinColumn(name = "service_id", nullable = false) private ServiceOffer service;
+    @ManyToOne @JoinColumn(name = "package_id") private ServicePackage selectedPackage;
+    @Column(length = 80) private String agreedPackageName;
+    private Integer deliveryDays;
     @Column(nullable = false, length = 2000) private String requestDescription;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal agreedPrice;
     @Column(nullable = false, length = 24) private String status = "SOLICITADO";

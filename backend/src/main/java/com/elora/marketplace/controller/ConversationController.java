@@ -19,6 +19,8 @@ public class ConversationController {
     private final MessageRepository messages;
     private final ProductRepository products;
     private final ServiceRepository services;
+    private final ProjectRepository projects;
+    private final ProposalRepository proposals;
     private final UserRepository users;
 
     private AppUser currentUser() { return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
@@ -45,6 +47,7 @@ public class ConversationController {
         AppUser recipient;
         Product product = null;
         ServiceOffer service = null;
+        Project project = null;
         String title;
         if (type.equals("PRODUCT")) {
             product = products.findById(request.itemId()).orElse(null);
@@ -58,6 +61,20 @@ public class ConversationController {
             recipient = users.findById(request.itemId()).orElse(null);
             if (recipient == null) return ResponseEntity.notFound().build();
             title = "Conversa pelo perfil";
+        } else if (type.equals("PROJECT")) {
+            project = projects.findById(request.itemId()).filter(p -> !"CANCELADO".equals(p.getStatus())).orElse(null);
+            if (project == null) return ResponseEntity.notFound().build();
+            if (project.getClient().getId().equals(user.getId())) {
+                if (request.recipientId() == null) return ResponseEntity.badRequest().body(Map.of("message", "Escolha o profissional da proposta para iniciar a conversa."));
+                Proposal targetProposal = proposals.findByProjectIdOrderByCreatedAtDesc(project.getId()).stream()
+                        .filter(p -> p.getProvider().getId().equals(request.recipientId())).findFirst().orElse(null);
+                if (targetProposal == null) return ResponseEntity.status(403).body(Map.of("message", "Este profissional ainda não enviou uma proposta para seu projeto."));
+                recipient = targetProposal.getProvider();
+            } else {
+                if (!proposals.existsByProjectIdAndProviderId(project.getId(), user.getId())) return ResponseEntity.status(403).body(Map.of("message", "Envie uma proposta antes de iniciar uma conversa sobre este projeto."));
+                recipient = project.getClient();
+            }
+            title = project.getTitle();
         } else return ResponseEntity.badRequest().body(Map.of("message", "Tipo de anúncio inválido."));
         if (recipient == null) return ResponseEntity.badRequest().body(Map.of("message", "Este anúncio não tem anunciante associado."));
         if (recipient.getId().equals(user.getId())) return ResponseEntity.badRequest().body(Map.of("message", "Você não pode iniciar uma conversa consigo mesmo."));
@@ -65,16 +82,18 @@ public class ConversationController {
         Long a = Math.min(user.getId(), recipient.getId()), b = Math.max(user.getId(), recipient.getId());
         final Product contextProduct = product;
         final ServiceOffer contextService = service;
+        final Project contextProject = project;
         Conversation conversation = conversations.findByParticipantAIdOrParticipantBIdOrderByUpdatedAtDesc(a, a).stream()
                 .filter(c -> c.getParticipantA().getId().equals(a) && c.getParticipantB().getId().equals(b))
                 .filter(c -> type.equals("PRODUCT") ? c.getProduct() != null && c.getProduct().getId().equals(request.itemId())
                         : type.equals("SERVICE") ? c.getService() != null && c.getService().getId().equals(request.itemId())
-                        : c.getProduct() == null && c.getService() == null)
+                        : type.equals("PROJECT") ? c.getProject() != null && c.getProject().getId().equals(request.itemId())
+                        : c.getProduct() == null && c.getService() == null && c.getProject() == null)
                 .findFirst().orElseGet(() -> {
                     Conversation created = new Conversation();
                     created.setParticipantA(user.getId().equals(a) ? user : recipient);
                     created.setParticipantB(user.getId().equals(a) ? recipient : user);
-                    created.setProduct(contextProduct); created.setService(contextService);
+                    created.setProduct(contextProduct); created.setService(contextService); created.setProject(contextProject);
                     return conversations.save(created);
                 });
         Message message = send(conversation, user, request.message());
@@ -129,9 +148,9 @@ public class ConversationController {
 
     private ConversationView summary(Conversation c, AppUser user, Message latest, long unreadCount) {
         AppUser other = c.getParticipantA().getId().equals(user.getId()) ? c.getParticipantB() : c.getParticipantA();
-        String type = c.getProduct() != null ? "PRODUCT" : c.getService() != null ? "SERVICE" : null;
-        Long targetId = c.getProduct() != null ? c.getProduct().getId() : c.getService() != null ? c.getService().getId() : null;
-        String title = c.getProduct() != null ? c.getProduct().getName() : c.getService() != null ? c.getService().getTitle() : "Conversa";
+        String type = c.getProduct() != null ? "PRODUCT" : c.getService() != null ? "SERVICE" : c.getProject() != null ? "PROJECT" : null;
+        Long targetId = c.getProduct() != null ? c.getProduct().getId() : c.getService() != null ? c.getService().getId() : c.getProject() != null ? c.getProject().getId() : null;
+        String title = c.getProduct() != null ? c.getProduct().getName() : c.getService() != null ? c.getService().getTitle() : c.getProject() != null ? c.getProject().getTitle() : "Conversa";
         String image = c.getProduct() != null ? c.getProduct().getImageUrl() : c.getService() != null ? c.getService().getImageUrl() : other.getAvatarUrl();
         java.math.BigDecimal price = c.getProduct() != null ? c.getProduct().getPrice() : c.getService() != null ? c.getService().getPrice() : null;
         return new ConversationView(c.getId(), other.getId(), other.getName(), other.getAvatarUrl(), type, targetId, title,
