@@ -6,7 +6,10 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Getter @Setter
-@Entity @Table(name = "reviews")
+@Entity @Table(name = "reviews", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_review_product_buyer_seller", columnNames = {"reviewer_id", "product_order_id", "reviewed_user_id"}),
+        @UniqueConstraint(name = "uk_review_service_buyer_order", columnNames = {"reviewer_id", "service_order_id"})
+})
 public class Review {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(optional = false) @JoinColumn(name = "reviewer_id", nullable = false) private AppUser reviewer;

@@ -21,6 +21,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("select r.rating, count(r) from Review r where r.reviewedUser.id = :userId group by r.rating")
     List<Object[]> distributionForUser(@Param("userId") Long userId);
     boolean existsByReviewerIdAndProductOrderIdAndReviewedUserId(Long reviewerId, Long orderId, Long reviewedUserId);
+    java.util.Optional<Review> findByReviewerIdAndProductOrderIdAndReviewedUserId(Long reviewerId, Long orderId, Long reviewedUserId);
     boolean existsByReviewerIdAndServiceOrderId(Long reviewerId, Long serviceOrderId);
     @Query("select r.reviewedUser.id, avg(r.rating), count(r) from Review r where r.reviewedUser.id in :userIds and r.serviceOrder is not null group by r.reviewedUser.id")
     List<Object[]> statsForUsers(@Param("userIds") List<Long> userIds);

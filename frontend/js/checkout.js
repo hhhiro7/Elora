@@ -6,8 +6,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderDeliveryEstimates();
     document.getElementById('checkout-form').addEventListener('submit', submitOrder);
     document.getElementById('address-zip').addEventListener('input', formatPostalCode);
+    setupCheckoutSteps();
+    document.querySelectorAll('[name="payment"]').forEach(input => input.addEventListener('change', updatePaymentDisclosure));
+    updatePaymentDisclosure();
     prefillBuyerDetails();
 });
+
+let checkoutStep = 0;
+function setupCheckoutSteps() {
+    const form = document.getElementById('checkout-form');
+    const sections = [...form.querySelectorAll('.checkout-section')];
+    const progress = [...document.querySelectorAll('.checkout-steps li')];
+    const review = document.createElement('section');
+    review.className = 'card checkout-section checkout-review-step'; review.hidden = true; review.id = 'checkout-review-step';
+    review.innerHTML = '<div class="checkout-section-heading"><div><h2>Revise sua compra</h2><p>Confira os dados antes de registrar o pedido.</p></div></div><div id="checkout-review-content" class="checkout-review-content"><p class="loading-state">Carregando anúncios atuais…</p></div>';
+    const actions = document.createElement('div'); actions.className = 'checkout-step-actions';
+    actions.innerHTML = '<button type="button" class="btn btn-secondary" id="checkout-step-back" hidden>Voltar</button><button type="button" class="btn" id="checkout-step-next">Continuar</button>';
+    form.insertBefore(review, form.querySelector('#place-order')); form.insertBefore(actions, form.querySelector('#place-order'));
+    document.getElementById('checkout-step-back').addEventListener('click', () => showCheckoutStep(Math.max(0, checkoutStep - 1)));
+    document.getElementById('checkout-step-next').addEventListener('click', async () => {
+        if (checkoutStep === 0 && !validateCheckoutFields([...sections[0].querySelectorAll('input'), ...sections[1].querySelectorAll('input')])) return;
+        if (checkoutStep === 2) { await renderCheckoutReview(); }
+        showCheckoutStep(Math.min(3, checkoutStep + 1));
+    });
+    showCheckoutStep(0);
+}
+
+function showCheckoutStep(index) {
+    checkoutStep = index;
+    const form = document.getElementById('checkout-form');
+    const sections = [...form.querySelectorAll('.checkout-section:not(.checkout-review-step)')];
+    const review = document.getElementById('checkout-review-step');
+    sections.forEach(section => { section.hidden = true; });
+    if (index === 0) { sections[0].hidden = false; sections[1].hidden = false; }
+    if (index === 1) sections[2].hidden = false;
+    if (index === 2) sections[3].hidden = false;
+    review.hidden = index !== 3;
+    document.querySelectorAll('.checkout-steps li').forEach((step, i) => { step.classList.toggle('is-current', i === index); step.classList.toggle('is-complete', i < index); if (i === index) step.setAttribute('aria-current','step'); else step.removeAttribute('aria-current'); });
+    document.getElementById('checkout-step-back').hidden = index === 0;
+    document.getElementById('checkout-step-next').hidden = index === 3;
+    document.getElementById('place-order').hidden = index !== 3;
+    document.getElementById('checkout-step-next').textContent = index === 2 ? 'Revisar pedido' : 'Continuar';
+}
+
+function validateCheckoutFields(fields) {
+    const visible = fields.filter(field => !field.disabled && field.required);
+    const invalid = visible.find(field => !field.checkValidity());
+    if (invalid) { invalid.reportValidity(); invalid.focus(); return false; }
+    const postalCode = document.getElementById('address-zip').value.replace(/\D/g, '');
+    if (postalCode.length !== 8) { document.getElementById('address-zip').setCustomValidity('Informe um CEP com 8 números.'); document.getElementById('address-zip').reportValidity(); document.getElementById('address-zip').setCustomValidity(''); return false; }
+    const phone = document.getElementById('buyer-phone').value.replace(/\D/g, '');
+    if (phone.length < 10) { document.getElementById('buyer-phone').setCustomValidity('Informe um celular com DDD.'); document.getElementById('buyer-phone').reportValidity(); document.getElementById('buyer-phone').setCustomValidity(''); return false; }
+    return true;
+}
+
+async function renderCheckoutReview() {
+    const cart = getCart(); const content = document.getElementById('checkout-review-content');
+    content.innerHTML = '<p class="loading-state">Conferindo anúncios e vendedores…</p>';
+    try {
+        const products = await Promise.all(cart.map(item => apiCall(`/products/${item.productId}`)));
+        const verifiedSubtotal = cart.reduce((sum,item,index)=>sum + Number(products[index].price) * Number(item.quantity),0);
+        const delivery = document.querySelector('[name="delivery"]:checked').value === 'EXPRESS' ? 'Rápida' : 'Econômica';
+        const estimateId = delivery === 'Rápida' ? 'express-estimate' : 'standard-estimate';
+        const paymentValue = document.querySelector('[name="payment"]:checked').value;
+        const payment = paymentValue === 'PIX' ? 'Pix (simulado)' : paymentValue === 'CREDIT_CARD' ? 'Cartão de crédito (simulado)' : 'Cartão de débito (simulado)';
+        content.innerHTML = `<div class="checkout-review-grid"><section><h3>Dados do comprador</h3><p>${escapeHtml(document.getElementById('buyer-name').value)}</p><p>${escapeHtml(document.getElementById('buyer-email').value)}</p><p>${escapeHtml(document.getElementById('buyer-phone').value)}</p></section><section><h3>Endereço</h3><p>${escapeHtml(buildDeliveryAddress())}</p></section><section><h3>Entrega</h3><p>${delivery} · ${escapeHtml(document.getElementById(estimateId).textContent.replace('Previsão: ',''))}</p><p>Frete: grátis na simulação</p></section><section><h3>Pagamento</h3><p>${payment}</p><p class="checkout-inline-note">Nenhum pagamento real será processado.</p></section></div><h3 class="checkout-review-products-title">Produtos e vendedores</h3><div class="checkout-review-products">${cart.map((item,index)=>`<article class="checkout-review-product"><img src="${escapeHtml(products[index].imageUrl || item.imageUrl || FALLBACK_IMG)}" alt="" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'"><div><strong>${escapeHtml(products[index].name)}</strong><span>Vendido por ${escapeHtml(products[index].owner?.name || 'anunciante')} · ${item.quantity} × ${formatCurrency(products[index].price)}</span></div><b>${formatCurrency(Number(products[index].price) * Number(item.quantity))}</b></article>`).join('')}</div><div class="checkout-review-total"><span>Subtotal</span><strong>${formatCurrency(verifiedSubtotal)}</strong><span>Frete</span><strong>Grátis</strong><span>Total da compra</span><strong>${formatCurrency(verifiedSubtotal)}</strong></div>`;
+    } catch (error) { content.innerHTML = `<div class="alert error">${escapeHtml(error.message || 'Não foi possível verificar os anúncios. Tente novamente.')}</div>`; }
+}
+
+function updatePaymentDisclosure() {
+    const selected = document.querySelector('[name="payment"]:checked')?.value;
+    let note = document.getElementById('checkout-card-demo-note');
+    if (selected === 'PIX') { note?.remove(); return; }
+    if (!note) { note = document.createElement('p'); note.id = 'checkout-card-demo-note'; note.className = 'checkout-demo-disclaimer'; document.querySelector('.checkout-payment-list')?.after(note); }
+    note.textContent = 'Cartão em modo de demonstração. Não informe número, validade ou código de segurança reais. Nenhum dado de cartão é enviado ou armazenado.';
+}
 
 function renderCheckout() {
     const cart = getCart();

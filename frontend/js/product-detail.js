@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         loadRelatedProducts(detailProduct);
         setupListingQuestions('PRODUCT', detailProduct.id, owner.id);
-        message.hidden = true; detail.hidden = false; syncFavoriteButtons();
+        message.hidden = true; detail.hidden = false; document.getElementById('product-qa-section').hidden = false; document.getElementById('product-negotiation-section').hidden = false; syncFavoriteButtons();
     } catch { message.textContent = 'Não foi possível carregar este anúncio agora. Volte ao catálogo e tente novamente.'; message.classList.add('is-error'); }
 });
 

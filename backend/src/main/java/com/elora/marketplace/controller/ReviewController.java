@@ -46,6 +46,23 @@ public class ReviewController {
         return new ReviewSummary(reviews.averageForUser(userId), reviews.countForUser(userId), distribution);
     }
 
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<?> orderReviewStatus(@PathVariable Long orderId) {
+        AppUser buyer = currentUser();
+        var order = orders.findById(orderId);
+        if (order.isEmpty()) return ResponseEntity.notFound().build();
+        if (!order.get().getBuyer().getId().equals(buyer.getId())) return ResponseEntity.status(403).body(Map.of("message", "Este pedido não pertence à sua conta."));
+        if (!"CONCLUIDO".equals(order.get().getStatus())) return ResponseEntity.status(403).body(Map.of("message", "As avaliações ficam disponíveis após a conclusão do pedido."));
+        var sellers = order.get().getItems().stream().map(item -> item.getProduct().getOwner()).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toMap(AppUser::getId, user -> user, (first, ignored) -> first, LinkedHashMap::new));
+        var result = sellers.values().stream().map(seller -> {
+            var review = reviews.findByReviewerIdAndProductOrderIdAndReviewedUserId(buyer.getId(), orderId, seller.getId());
+            return Map.of("sellerId", seller.getId(), "sellerName", seller.getName(), "reviewed", review.isPresent(),
+                    "rating", review.map(Review::getRating).orElse(0), "comment", review.map(Review::getComment).orElse(""));
+        }).toList();
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping
     public ResponseEntity<?> create(@RequestBody ReviewRequest request) {
         AppUser reviewer = currentUser();
@@ -77,7 +94,11 @@ public class ReviewController {
                 return ResponseEntity.badRequest().body(Map.of("message", "Você já avaliou este serviço."));
             review.setServiceOrder(serviceOrder.get());
         } else return ResponseEntity.badRequest().body(Map.of("message", "Tipo de avaliação inválido."));
-        Review saved = reviews.save(review);
-        return ResponseEntity.status(201).body(new ReviewView(saved.getId(), reviewer.getId(), reviewer.getName(), saved.getRating(), saved.getComment(), saved.getCreatedAt()));
+        try {
+            Review saved = reviews.saveAndFlush(review);
+            return ResponseEntity.status(201).body(new ReviewView(saved.getId(), reviewer.getId(), reviewer.getName(), saved.getRating(), saved.getComment(), saved.getCreatedAt()));
+        } catch (org.springframework.dao.DataIntegrityViolationException duplicate) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Esta compra já possui uma avaliação sua para este vendedor."));
+        }
     }
 }

@@ -136,6 +136,9 @@ class MarketplaceFlowIntegrationTest {
         ResponseEntity<String> orderResponse = http.exchange("/api/orders", HttpMethod.POST,
                 request(buyerToken, "{\"paymentMethod\":\"PIX\",\"deliveryAddress\":\"Rua A, 1\",\"items\":[{\"productId\":" + productId + ",\"quantity\":1}]}"), String.class);
         long orderId = json.readTree(orderResponse.getBody()).get("id").asLong();
+        ResponseEntity<String> prematureReview = http.exchange("/api/reviews", HttpMethod.POST,
+                request(buyerToken, "{\"type\":\"PRODUCT\",\"orderId\":" + orderId + ",\"reviewedUserId\":" + seller.get("id").asLong() + ",\"rating\":5,\"comment\":\"Ainda não recebi o pedido.\"}"), String.class);
+        assertThat(prematureReview.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(patch(sellerToken, "/api/orders/" + orderId + "/status", "{\"status\":\"ENVIADO\"}")).isEqualTo(200);
         assertThat(patch(buyerToken, "/api/orders/" + orderId + "/status", "{\"status\":\"CONCLUIDO\"}")).isEqualTo(200);
         ResponseEntity<String> review = http.exchange("/api/reviews", HttpMethod.POST,
@@ -144,6 +147,12 @@ class MarketplaceFlowIntegrationTest {
         ResponseEntity<String> duplicate = http.exchange("/api/reviews", HttpMethod.POST,
                 request(buyerToken, "{\"type\":\"PRODUCT\",\"orderId\":" + orderId + ",\"reviewedUserId\":" + seller.get("id").asLong() + ",\"rating\":5,\"comment\":\"Outra avaliação.\"}"), String.class);
         assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        JsonNode reviewStatus = json.readTree(http.exchange("/api/reviews/order/" + orderId, HttpMethod.GET, request(buyerToken, null), String.class).getBody());
+        assertThat(reviewStatus).hasSize(1);
+        assertThat(reviewStatus.get(0).get("reviewed").asBoolean()).isTrue();
+        register("Compradora sem compra", "no-purchase-review@example.test", "10000000019");
+        String noPurchaseToken = login("no-purchase-review@example.test");
+        assertThat(http.exchange("/api/reviews/order/" + orderId, HttpMethod.GET, request(noPurchaseToken, null), String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         JsonNode summary = json.readTree(http.getForEntity("/api/reviews/user/" + seller.get("id").asLong() + "/summary", String.class).getBody());
         assertThat(summary.get("total").asLong()).isEqualTo(1);
         assertThat(summary.get("distribution").get("5").asLong()).isEqualTo(1);
