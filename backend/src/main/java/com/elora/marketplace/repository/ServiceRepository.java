@@ -15,7 +15,9 @@ public interface ServiceRepository extends JpaRepository<ServiceOffer, Long> {
     long countByOwnerIdAndStatus(Long ownerId, String status);
     List<ServiceOffer> findByOwnerIdAndStatus(Long ownerId, String status);
     @Query("select s from ServiceOffer s where s.status = 'ATIVO' " +
-           "and (:q = '' or lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''),' ',coalesce(s.owner.name,''))) like lower(concat('%',:q,'%'))) " +
+           "and (:q = '' or lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''),' ',coalesce(s.owner.name,''))) like lower(concat('%',:q,'%')) " +
+           "or (:qAlt1 <> '' and lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''),' ',coalesce(s.owner.name,''))) like lower(concat('%',:qAlt1,'%'))) " +
+           "or (:qAlt2 <> '' and lower(concat(coalesce(s.title,''),' ',coalesce(s.description,''),' ',coalesce(s.category,''),' ',coalesce(s.tags,''),' ',coalesce(s.owner.name,''))) like lower(concat('%',:qAlt2,'%')))) " +
            "and (:category = '' or lower(coalesce(s.category,'')) = lower(:category)) " +
            "and (:minPrice is null or s.price >= :minPrice) and (:maxPrice is null or s.price <= :maxPrice) " +
            "and (:location = '' or lower(coalesce(s.location,'')) like lower(concat('%',:location,'%'))) " +
@@ -27,5 +29,6 @@ public interface ServiceRepository extends JpaRepository<ServiceOffer, Long> {
             @Param("minPrice") BigDecimal minPrice, @Param("maxPrice") BigDecimal maxPrice,
             @Param("location") String location, @Param("maxDays") Integer maxDays,
             @Param("experience") String experience, @Param("mode") String mode,
-            @Param("minRating") Double minRating, Pageable pageable);
+            @Param("minRating") Double minRating, @Param("qAlt1") String qAlt1,
+            @Param("qAlt2") String qAlt2, Pageable pageable);
 }

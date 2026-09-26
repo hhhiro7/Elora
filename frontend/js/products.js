@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('load-more-products').addEventListener('click', () => loadProducts(false));
     document.getElementById('product-list').addEventListener('click', async event => {
+        const compareButton = event.target.closest('[data-compare-product]');
+        if (compareButton) { toggleProductComparison(Number(compareButton.dataset.compareProduct)); return; }
         const button = event.target.closest('[data-add-product]'); if (!button) return;
         if (!requireAuth()) return;
         setButtonLoading(button, true, 'Adicionando…');
@@ -59,6 +61,7 @@ async function loadProducts(reset) {
         button.hidden = !productHasNext; button.disabled = false;
         results.textContent = `${page.totalElements} ${page.totalElements === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
         syncFavoriteButtons();
+        refreshProductComparison();
     } catch (error) {
         if (reset) list.innerHTML = '<div class="empty-state card-empty"><h2>Não foi possível carregar os anúncios</h2><p>Confira sua conexão e tente novamente em instantes.</p><button class="btn btn-secondary" type="button" onclick="loadProducts(true)">Tentar novamente</button></div>';
         button.hidden = true; results.textContent = 'Catálogo indisponível';
@@ -68,7 +71,8 @@ async function loadProducts(reset) {
 function productCard(p) {
     const details = `produto.html?id=${encodeURIComponent(p.id)}`;
     const stock = Number(p.stock) || 0;
-    return `<article class="card listing-card product-listing-card"><a class="listing-image" href="${details}"><img src="${escapeHtml(p.imageUrl || FALLBACK_IMG)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'"></a>${favoriteButton('PRODUCT', p.id)}<div class="listing-card-copy"><div class="listing-meta"><span class="badge badge-status">${escapeHtml(p.category || 'Produto')}</span><span class="listing-condition">${p.conditionType === 'USADO' ? 'Usado' : 'Novo'}</span></div><h2><a href="${details}">${escapeHtml(p.name)}</a></h2><p class="listing-description">${escapeHtml(p.description || 'Consulte os detalhes do anúncio.')}</p><strong class="price">${formatCurrency(p.price)}</strong><div class="listing-seller-row"><a href="usuario.html?id=${p.owner?.id || ''}">${escapeHtml(p.owner?.name || 'Comunidade Elora')}</a><span>${escapeHtml(p.location || '')}</span></div><div class="listing-card-actions"><a class="btn btn-secondary" href="${details}">Ver detalhes</a><button class="btn" type="button" data-add-product="${p.id}" ${stock <= 0 ? 'disabled' : ''}>${stock > 0 ? 'Adicionar' : 'Sem estoque'}</button></div></div></article>`;
+    const compared = typeof getComparedProductIds === 'function' && getComparedProductIds().includes(Number(p.id));
+    return `<article class="card listing-card product-listing-card"><a class="listing-image" href="${details}"><img src="${escapeHtml(p.imageUrl || FALLBACK_IMG)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'"></a>${favoriteButton('PRODUCT', p.id)}<div class="listing-card-copy"><div class="listing-meta"><span class="badge badge-status">${escapeHtml(p.category || 'Produto')}</span><span class="listing-condition">${p.conditionType === 'USADO' ? 'Usado' : 'Novo'}</span></div><h2><a href="${details}">${escapeHtml(p.name)}</a></h2><p class="listing-description">${escapeHtml(p.description || 'Consulte os detalhes do anúncio.')}</p><strong class="price">${formatCurrency(p.price)}</strong><div class="listing-seller-row"><a href="usuario.html?id=${p.owner?.id || ''}">${escapeHtml(p.owner?.name || 'Comunidade Elora')}</a><span>${escapeHtml(p.location || '')}</span></div><div class="listing-card-actions"><a class="btn btn-secondary" href="${details}">Ver detalhes</a><button class="btn" type="button" data-add-product="${p.id}" ${stock <= 0 ? 'disabled' : ''}>${stock > 0 ? 'Adicionar' : 'Sem estoque'}</button></div><button class="listing-compare-button ${compared ? 'is-selected' : ''}" type="button" data-compare-product="${p.id}" aria-pressed="${compared}">${compared ? '✓ Na comparação' : 'Comparar'}</button></div></article>`;
 }
 
 function clearProductFilters() {

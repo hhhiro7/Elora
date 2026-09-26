@@ -37,7 +37,7 @@ function renderNav() {
                 <a href="perfil.html">Meu perfil</a><a href="dashboard.html">Painel</a>
                 <a href="meus-produtos.html">Meus anúncios</a><a href="meus-pedidos.html">Meus pedidos</a><a href="minhas-vendas.html">Vendas</a>
                 <a href="oferecer-servico.html">Publicar serviço</a><a href="servicos-contratados.html">Solicitações de serviço</a>
-                <a href="meus-projetos.html">Meus projetos</a><a href="propostas.html">Minhas propostas</a><a href="favoritos.html">Favoritos</a><a href="mensagens.html">Mensagens</a>
+                <a href="meus-projetos.html">Meus projetos</a><a href="propostas.html">Minhas propostas</a><a href="negociacoes.html">Negociações</a><a href="notificacoes.html">Notificações</a><a href="favoritos.html">Favoritos</a><a href="comparar.html">Comparar produtos</a><a href="mensagens.html">Mensagens</a>
                 <button id="nav-logout" type="button">Sair da conta</button>
             </div>
         </details>` : `<a href="login.html">Entrar</a><a href="cadastro.html" class="btn nav-signup">Criar conta</a>`;
@@ -46,7 +46,7 @@ function renderNav() {
         <a href="produtos.html">Produtos</a>
         <a href="servicos.html">Serviços</a>
         <a href="projetos.html">Projetos</a>
-        ${authenticated ? `<a href="vender.html">Anunciar</a><a href="mensagens.html">Mensagens</a>` : ''}
+        ${authenticated ? `<a href="vender.html">Anunciar</a><a href="mensagens.html">Mensagens</a><a class="nav-notifications-link" href="notificacoes.html" aria-label="Notificações">Avisos<span class="nav-notification-count" id="nav-notification-count" hidden>0</span></a>` : ''}
         <a class="nav-favorites-link" href="favoritos.html">Favoritos</a>
         ${account}
         ${typeof cartControl === 'function' ? cartControl() : ''}
@@ -69,6 +69,10 @@ function renderNav() {
         localStorage.removeItem('userName');
         location.href = 'index.html';
     });
+    if (authenticated) apiCall('/notifications/unread-count').then(result => {
+        const badge = document.getElementById('nav-notification-count');
+        if (badge && Number(result.count) > 0) { badge.hidden = false; badge.textContent = Number(result.count) > 99 ? '99+' : String(result.count); }
+    }).catch(() => {});
     nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
         header?.classList.remove('nav-open');
         document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');

@@ -19,12 +19,14 @@ import java.math.BigDecimal;
 import com.elora.marketplace.dto.MarketplaceDTOs.PageResult;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import com.elora.marketplace.service.SearchSynonyms;
 
 @RestController @RequestMapping("/api/services") @RequiredArgsConstructor
 public class ServiceController {
     private final ServiceRepository serviceRepo;
     private final ReviewRepository reviews;
     private final ServiceOrderRepository serviceOrders;
+    private final SearchSynonyms searchSynonyms;
 
     private AppUser currentUser() {
         return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -47,8 +49,10 @@ public class ServiceController {
             case "desc" -> Sort.by("price").descending();
             default -> Sort.by("id").descending();
         };
-        var result = serviceRepo.searchActive(blankToEmpty(q), blankToEmpty(category), minPrice, maxPrice, blankToEmpty(location),
+        var terms = searchSynonyms.expand(q);
+        var result = serviceRepo.searchActive(terms.primary(), blankToEmpty(category), minPrice, maxPrice, blankToEmpty(location),
                 maxDays, blankToEmpty(experience), cleanMode(mode), minRating != null && minRating > 0 ? Math.min(5, minRating) : null,
+                terms.alternativeOne(), terms.alternativeTwo(),
                 PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 48)), order));
         List<ServiceOffer> services = new ArrayList<>(result.getContent());
         enrich(services);

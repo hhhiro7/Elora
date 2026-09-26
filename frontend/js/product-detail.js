@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const quantity = document.getElementById('detail-quantity');
         for (let n = 1; n <= Math.min(Number(detailProduct.stock) || 0, 20); n++) quantity.add(new Option(String(n), String(n)));
         const actions = ['add-to-cart', 'buy-now', 'detail-quantity', 'contact-seller'];
+        if (!detailProduct.stock || detailProduct.stock <= 0) document.getElementById('make-offer').disabled = true;
         if (!detailProduct.stock || detailProduct.stock <= 0) actions.forEach(action => { const element = document.getElementById(action); element.disabled = true; });
         document.getElementById('detail-favorite').dataset.favoriteType = 'PRODUCT';
         document.getElementById('detail-favorite').dataset.favoriteId = String(detailProduct.id);
@@ -39,6 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('product-message-dialog').showModal();
         });
         document.getElementById('product-message-form').addEventListener('submit', sendProductMessage);
+        document.getElementById('make-offer').addEventListener('click', openProductOffer);
+        document.getElementById('product-offer-form').addEventListener('submit', sendProductOffer);
         document.getElementById('share-product').addEventListener('click', shareProduct);
         if (getToken()) {
             const profile = await apiCall('/users/me');
@@ -46,9 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actions.forEach(action => document.getElementById(action).hidden = true);
                 document.getElementById('detail-favorite').hidden = true;
                 document.getElementById('contact-seller').hidden = true;
+                document.getElementById('make-offer').hidden = true;
             }
         }
         loadRelatedProducts(detailProduct);
+        setupListingQuestions('PRODUCT', detailProduct.id, owner.id);
         message.hidden = true; detail.hidden = false; syncFavoriteButtons();
     } catch { message.textContent = 'Não foi possível carregar este anúncio agora. Volte ao catálogo e tente novamente.'; message.classList.add('is-error'); }
 });
@@ -70,6 +75,35 @@ async function sendProductMessage(event) {
         location.href = `mensagens.html?id=${result.conversationId}`;
     } catch (error) { const feedback = document.getElementById('product-message-feedback'); feedback.className = 'alert error'; feedback.textContent = error.message; }
     finally { setButtonLoading(button, false); }
+}
+
+function openProductOffer() {
+    if (!requireAuth()) return;
+    const amount = document.getElementById('offer-amount');
+    amount.max = String(detailProduct.price);
+    amount.value = '';
+    document.getElementById('offer-product-summary').textContent = `${detailProduct.name} · anunciado por ${formatCurrency(detailProduct.price)}. A proposta não pode ultrapassar o preço anunciado.`;
+    document.getElementById('offer-feedback').textContent = '';
+    document.getElementById('product-offer-dialog').showModal();
+}
+
+async function sendProductOffer(event) {
+    event.preventDefault();
+    if (!requireAuth()) return;
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    const feedback = document.getElementById('offer-feedback');
+    setButtonLoading(button, true, 'Enviando…');
+    feedback.className = 'alert'; feedback.textContent = '';
+    try {
+        await apiCall(`/products/${detailProduct.id}/negotiations`, 'POST', {
+            amount: Number(form.elements.amount.value), message: form.elements.message.value.trim()
+        });
+        document.getElementById('product-offer-dialog').close();
+        showToast('Proposta enviada. Acompanhe as respostas em Negociações.');
+    } catch (error) {
+        feedback.className = 'alert error'; feedback.textContent = error.message || 'Não foi possível enviar a proposta.';
+    } finally { setButtonLoading(button, false); }
 }
 
 async function shareProduct() {

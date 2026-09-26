@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+import com.elora.marketplace.service.MarketplaceNotificationService;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class ProjectController {
     private final ProjectRepository projects;
     private final ProposalRepository proposals;
     private final UserRepository users;
+    private final MarketplaceNotificationService notifications;
 
     private AppUser currentUser() { return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
 
@@ -80,7 +82,9 @@ public class ProjectController {
         Proposal proposal = new Proposal(); proposal.setProject(project); proposal.setProvider(provider);
         proposal.setAmount(request.amount()); proposal.setDeadlineDays(request.deadlineDays());
         proposal.setMessage(request.message().trim()); proposal.setExperience(clean(request.experience()));
-        return ResponseEntity.status(201).body(view(proposals.save(proposal)));
+        Proposal saved = proposals.save(proposal);
+        notifications.notify(project.getClient(), "NOVA_PROPOSTA", "Nova proposta para seu projeto", provider.getName() + " enviou uma proposta para " + project.getTitle() + ".", "meus-projetos.html");
+        return ResponseEntity.status(201).body(view(saved));
     }
 
     @PostMapping("/api/proposals/{id}/accept") @Transactional
@@ -96,6 +100,7 @@ public class ProjectController {
         project.setStatus("EM_ANDAMENTO"); project.setUpdatedAt(LocalDateTime.now());
         proposals.saveAll(proposals.findByProjectIdOrderByCreatedAtDesc(project.getId()));
         projects.save(project);
+        notifications.notify(proposal.getProvider(), "PROPOSTA_ACEITA", "Sua proposta foi aceita", "Sua proposta para " + project.getTitle() + " foi aceita.", "propostas.html");
         return ResponseEntity.ok(view(proposal));
     }
 

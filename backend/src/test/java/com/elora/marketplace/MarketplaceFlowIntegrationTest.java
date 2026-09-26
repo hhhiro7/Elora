@@ -167,6 +167,8 @@ class MarketplaceFlowIntegrationTest {
         assertThat(serviceDetail.get("packages").get(1).get("price").decimalValue().compareTo(new java.math.BigDecimal("250.00"))).isZero();
         JsonNode filteredServices = json.readTree(http.getForEntity("/api/services/search?category=Design&maxDays=5&mode=ONLINE", String.class).getBody());
         assertThat(filteredServices.get("content").toString()).contains("Criação de identidade");
+        JsonNode synonymSearch = json.readTree(http.getForEntity("/api/services/search?q=logo", String.class).getBody());
+        assertThat(synonymSearch.get("content").toString()).contains("Criação de identidade");
 
         ResponseEntity<String> projectResponse = http.exchange("/api/projects", HttpMethod.POST, request(clientToken,
                 "{\"title\":\"Site para minha loja\",\"description\":\"Preciso de uma página simples para apresentar a loja.\",\"category\":\"Programação\",\"budget\":1200,\"deadlineDays\":20,\"serviceMode\":\"ONLINE\"}"), String.class);
@@ -184,6 +186,69 @@ class MarketplaceFlowIntegrationTest {
         assertThat(http.exchange("/api/proposals/mine", HttpMethod.GET, request(providerToken, null), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(http.exchange("/api/proposals/" + proposalId + "/accept", HttpMethod.POST, request(clientToken, "{}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(json.readTree(http.exchange("/api/projects/mine", HttpMethod.GET, request(clientToken, null), String.class).getBody()).get(0).get("status").asText()).isEqualTo("EM_ANDAMENTO");
+    }
+
+    @Test
+    void negociacaoDeProdutoENotificacoesRespeitamAsPartes() throws Exception {
+        register("Vendedora negociação", "negotiation-seller@example.test", "23456789092");
+        String sellerToken = login("negotiation-seller@example.test");
+        ResponseEntity<String> created = http.exchange("/api/products", HttpMethod.POST,
+                request(sellerToken, "{\"name\":\"Cadeira de escritório\",\"category\":\"Casa\",\"description\":\"Cadeira em bom estado\",\"price\":800,\"stock\":2,\"conditionType\":\"USADO\",\"imageUrl\":\"https://example.test/chair.jpg\"}"), String.class);
+        long productId = json.readTree(created.getBody()).get("id").asLong();
+
+        register("Comprador negociação", "negotiation-buyer@example.test", "34567890175");
+        String buyerToken = login("negotiation-buyer@example.test");
+        ResponseEntity<String> proposal = http.exchange("/api/products/" + productId + "/negotiations", HttpMethod.POST,
+                request(buyerToken, "{\"amount\":700,\"message\":\"Posso retirar esta semana.\"}"), String.class);
+        assertThat(proposal.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        long negotiationId = json.readTree(proposal.getBody()).get("id").asLong();
+        assertThat(http.exchange("/api/products/" + productId + "/negotiations", HttpMethod.POST,
+                request(buyerToken, "{\"amount\":650,\"message\":\"Tenho outra oferta.\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<String> question = http.exchange("/api/products/" + productId + "/questions", HttpMethod.POST,
+                request(buyerToken, "{\"question\":\"A cadeira possui ajuste de altura?\"}"), String.class);
+        assertThat(question.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        long questionId = json.readTree(question.getBody()).get("id").asLong();
+        assertThat(http.exchange("/api/questions/" + questionId + "/answer", HttpMethod.POST,
+                request(buyerToken, "{\"answer\":\"Não sou o anunciante.\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(http.exchange("/api/questions/" + questionId + "/answer", HttpMethod.POST,
+                request(sellerToken, "{\"answer\":\"Sim, o assento tem ajuste de altura.\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode publicQuestions = json.readTree(http.getForEntity("/api/products/" + productId + "/questions", String.class).getBody());
+        assertThat(publicQuestions.get(0).get("answer").asText()).contains("ajuste de altura");
+        JsonNode sellerNotifications = json.readTree(http.exchange("/api/notifications", HttpMethod.GET, request(sellerToken, null), String.class).getBody());
+        assertThat(sellerNotifications).hasSize(2);
+        long notificationId = sellerNotifications.get(0).get("id").asLong();
+        assertThat(http.exchange("/api/negotiations/" + negotiationId + "/counter", HttpMethod.POST,
+                request(sellerToken, "{\"amount\":750,\"message\":\"Consigo fechar nesse valor.\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(http.exchange("/api/negotiations/" + negotiationId + "/accept", HttpMethod.POST,
+                request(buyerToken, "{}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode negotiations = json.readTree(http.exchange("/api/negotiations/mine", HttpMethod.GET, request(buyerToken, null), String.class).getBody());
+        assertThat(negotiations.get(0).get("status").asText()).isEqualTo("ACEITA");
+        assertThat(negotiations.get(0).get("sellerCounteroffer").decimalValue().compareTo(new java.math.BigDecimal("750.00"))).isZero();
+        assertThat(http.exchange("/api/notifications", HttpMethod.GET, request(buyerToken, null), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(http.exchange("/api/notifications/" + notificationId + "/read", HttpMethod.POST, request(buyerToken, "{}"), String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(http.exchange("/api/notifications/" + notificationId + "/read", HttpMethod.POST, request(sellerToken, "{}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void portfolioPermiteGerenciarSomenteItensDoProprioPerfil() throws Exception {
+        register("Profissional portfolio", "portfolio-owner@example.test", "56789012303");
+        String ownerToken = login("portfolio-owner@example.test");
+        long ownerId = json.readTree(http.exchange("/api/users/me", HttpMethod.GET, request(ownerToken, null), String.class).getBody()).get("id").asLong();
+        ResponseEntity<String> created = http.exchange("/api/portfolio", HttpMethod.POST, request(ownerToken,
+                "{\"title\":\"Página de cafeteria\",\"description\":\"Site responsivo criado para uma cafeteria local.\",\"category\":\"Programação\",\"technologies\":\"HTML, CSS, JavaScript\",\"imageUrl\":\"https://example.test/cafe.jpg\",\"projectUrl\":\"https://example.test/cafe\"}"), String.class);
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        long itemId = json.readTree(created.getBody()).get("id").asLong();
+        JsonNode publicItems = json.readTree(http.getForEntity("/api/users/" + ownerId + "/portfolio", String.class).getBody());
+        assertThat(publicItems).hasSize(1);
+        assertThat(publicItems.get(0).get("title").asText()).isEqualTo("Página de cafeteria");
+        assertThat(http.exchange("/api/portfolio/" + itemId, HttpMethod.PUT, request(ownerToken,
+                "{\"title\":\"Página de cafeteria\",\"description\":\"Versão revisada e acessível.\",\"category\":\"Programação\",\"technologies\":\"HTML, CSS, JavaScript\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+        register("Outro profissional portfolio", "portfolio-other@example.test", "67890123469");
+        String otherToken = login("portfolio-other@example.test");
+        assertThat(http.exchange("/api/portfolio/" + itemId, HttpMethod.PUT, request(otherToken,
+                "{\"title\":\"Tentativa\",\"description\":\"Não deve alterar\",\"category\":\"Design\"}"), String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(http.exchange("/api/portfolio/" + itemId, HttpMethod.DELETE, request(ownerToken, null), String.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(json.readTree(http.getForEntity("/api/users/" + ownerId + "/portfolio", String.class).getBody())).isEmpty();
     }
 
     private void register(String name, String email, String cpf) {

@@ -6,9 +6,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const results = await Promise.allSettled([
             apiCall(`/users/${id}`), apiCall(`/users/${id}/products`), apiCall(`/users/${id}/services`),
-            apiCall(`/reviews/user/${id}`), apiCall(`/reviews/user/${id}/summary`)
+            apiCall(`/reviews/user/${id}`), apiCall(`/reviews/user/${id}/summary`), apiCall(`/users/${id}/portfolio`)
         ]);
-        const [profileResult, productsResult, servicesResult, reviewsResult, summaryResult] = results;
+        const [profileResult, productsResult, servicesResult, reviewsResult, summaryResult, portfolioResult] = results;
         if (profileResult.status === 'rejected') {
             const error = profileResult.reason;
             showPublicProfileError(error.status === 404 ? 'Este perfil não existe ou não está mais disponível.' : error.message || 'Confira a conexão com a API e tente novamente.');
@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const services = servicesResult.status === 'fulfilled' && Array.isArray(servicesResult.value) ? servicesResult.value : [];
         const reviews = reviewsResult.status === 'fulfilled' && Array.isArray(reviewsResult.value) ? reviewsResult.value : [];
         const reviewSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
+        const portfolioItems = portfolioResult.status === 'fulfilled' && Array.isArray(portfolioResult.value) ? portfolioResult.value : [];
         document.title = `${profile.name} — Elora`;
         document.getElementById('public-name').textContent = profile.name;
         document.getElementById('public-bio').textContent = profile.bio || 'Este membro ainda não adicionou uma apresentação.';
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (profile.providerLevel) { level.hidden = false; level.textContent = `Profissional ${profile.providerLevel}`; }
         const experience = [...new Set(services.map(item => item.experienceLevel).filter(Boolean))];
         if (experience.length) { const output = document.getElementById('provider-experience'); output.hidden = false; output.textContent = `Experiência informada: ${experience.join(' · ')}`; }
-        renderProviderProfileExtras(services);
+        renderProviderProfileExtras(services, portfolioItems);
         document.getElementById('public-profile-hero').hidden = false;
         document.getElementById('public-message').addEventListener('click', async () => {
             if (!requireAuth()) return;
@@ -68,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function renderProviderProfileExtras(services) {
+function renderProviderProfileExtras(services, portfolioItems = []) {
     const section = document.getElementById('provider-profile-sections');
     const specialties = [...new Set(services.flatMap(service => String(service.tags || '').split(/[,;\n]/).map(value => value.trim()).filter(Boolean)))].slice(0, 16);
     const specialtySection = document.getElementById('provider-specialties-section');
@@ -82,7 +83,12 @@ function renderProviderProfileExtras(services) {
         portfolioSection.hidden = false;
         document.getElementById('provider-portfolio').innerHTML = portfolio.map((url,index) => `<img src="${escapeHtml(url)}" alt="Trabalho do portfólio ${index + 1}" loading="lazy" onerror="this.hidden=true">`).join('');
     }
-    section.hidden = !specialties.length && !portfolio.length;
+    const workSection = document.getElementById('public-work-section');
+    if (portfolioItems.length) {
+        workSection.hidden = false;
+        document.getElementById('public-portfolio-items').innerHTML = portfolioItems.map(item => `<article class="portfolio-public-item">${item.imageUrl ? `<a href="${escapeHtml(item.projectUrl || item.imageUrl)}" target="_blank" rel="noopener noreferrer"><img src="${escapeHtml(item.imageUrl)}" alt="Projeto: ${escapeHtml(item.title)}" loading="lazy" onerror="this.parentElement.classList.add('is-empty');this.remove()"></a>` : '<div class="portfolio-public-image is-empty"><span>Sem imagem</span></div>'}<div><span class="badge badge-status">${escapeHtml(item.category)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p>${item.technologies ? `<small>${escapeHtml(item.technologies)}</small>` : ''}${item.projectUrl ? `<a class="portfolio-project-link" href="${escapeHtml(item.projectUrl)}" target="_blank" rel="noopener noreferrer">Visitar projeto ↗</a>` : ''}</div></article>`).join('');
+    }
+    section.hidden = !specialties.length && !portfolio.length && !portfolioItems.length;
 }
 
 function isPublicImageUrl(value) {

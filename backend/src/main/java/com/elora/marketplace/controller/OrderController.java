@@ -15,11 +15,13 @@ import com.elora.marketplace.dto.MarketplaceDTOs.StatusUpdate;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import com.elora.marketplace.service.MarketplaceNotificationService;
 
 @RestController @RequestMapping("/api/orders") @RequiredArgsConstructor
 public class OrderController {
     private final OrderRepository orderRepo;
     private final ProductRepository productRepo;
+    private final MarketplaceNotificationService notifications;
 
     private AppUser currentUser() {
         return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -100,8 +102,9 @@ public class OrderController {
         }
 
         order.setTotalAmount(total);
-
-        return ResponseEntity.status(201).body(orderRepo.save(order));
+        AppOrder saved = orderRepo.save(order);
+        products.values().stream().map(Product::getOwner).distinct().forEach(owner -> notifications.notify(owner, "PEDIDO_CONFIRMADO", "Novo pedido", "Um produto do seu anúncio foi comprado.", "minhas-vendas.html"));
+        return ResponseEntity.status(201).body(saved);
     }
 
     @PatchMapping("/{id}/status")

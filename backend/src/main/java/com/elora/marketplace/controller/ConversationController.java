@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import org.springframework.transaction.annotation.Transactional;
+import com.elora.marketplace.service.MarketplaceNotificationService;
 
 @RestController @RequestMapping("/api/conversations") @RequiredArgsConstructor
 public class ConversationController {
@@ -22,6 +23,7 @@ public class ConversationController {
     private final ProjectRepository projects;
     private final ProposalRepository proposals;
     private final UserRepository users;
+    private final MarketplaceNotificationService notifications;
 
     private AppUser currentUser() { return (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
 
@@ -97,6 +99,7 @@ public class ConversationController {
                     return conversations.save(created);
                 });
         Message message = send(conversation, user, request.message());
+        notifications.notify(recipient, "NOVA_MENSAGEM", "Nova mensagem", user.getName() + " iniciou uma conversa sobre " + title + ".", "mensagens.html?id=" + conversation.getId());
         return ResponseEntity.status(201).body(Map.of("conversationId", conversation.getId(), "message", message.getContent(), "targetTitle", title));
     }
 
@@ -126,6 +129,9 @@ public class ConversationController {
         if (!isParticipant(conversation)) return ResponseEntity.status(403).body(Map.of("message", "Esta conversa não pertence à sua conta."));
         if (request.content() == null || request.content().isBlank()) return ResponseEntity.badRequest().body(Map.of("message", "A mensagem não pode ficar vazia."));
         Message message = send(conversation, currentUser(), request.content());
+        AppUser sender = currentUser();
+        AppUser recipient = conversation.getParticipantA().getId().equals(sender.getId()) ? conversation.getParticipantB() : conversation.getParticipantA();
+        notifications.notify(recipient, "NOVA_MENSAGEM", "Nova mensagem", sender.getName() + " enviou uma mensagem.", "mensagens.html?id=" + conversation.getId());
         return ResponseEntity.status(201).body(view(message));
     }
 

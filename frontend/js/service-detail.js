@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         await Promise.allSettled([loadServiceReviews(owner.id), loadRelatedServices(currentService)]);
+        setupListingQuestions('SERVICE', currentService.id, owner.id);
         document.getElementById('service-about-section').hidden = false;
         message.hidden = true; document.getElementById('service-detail').hidden = false;
         syncFavoriteButtons();
